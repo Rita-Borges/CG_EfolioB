@@ -1,14 +1,119 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="en">
+
 <head>
-    <meta charset="utf-8">
-    <title>Computação gráfica: efolio B</title>
-    <title> trajetoria do Sol </title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centered Mountain with Sun</title>
     <style>
-        body { margin: 0; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #noiseStrengthSlider {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+        }
     </style>
 </head>
+
 <body>
-<script type="module" src="/src/main.js"></script>
+<label for="noiseStrengthSlider"></label><input type="range" id="noiseStrengthSlider" min="1" max="20" value="5" step="0.1">
+<script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.124.0/build/three.module.js';
+    import { ImprovedNoise } from "https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/math/ImprovedNoise.js";
+
+    // Set up scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Generate terrain using Perlin noise
+    const terrainSize = 60;
+    const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, 100, 100);
+    const material = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        wireframe: true
+    });
+    const terrain = new THREE.Mesh(geometry, material);
+    scene.add(terrain);
+
+    // Apply Perlin noise to the terrain
+    const perlin = new ImprovedNoise();
+    let noiseStrength = 5; // Initial value for noise strength
+
+    function updateTerrain() {
+        for (let i = 0; i < geometry.vertices.length; i++) {
+            const vertex = geometry.vertices[i];
+            const value = perlin.noise(vertex.x / noiseStrength, vertex.y / noiseStrength, 1);
+            vertex.z = value * noiseStrength;
+        }
+        geometry.verticesNeedUpdate = true;
+        renderer.render(scene, camera);
+    }
+
+    updateTerrain(); // Initial render
+
+    // Position the camera
+    camera.position.z = 30;
+
+    // Add lighting
+    const ambientLight = new THREE.AmbientLight(0x404040);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(1, 1, 1).normalize();
+    scene.add(directionalLight);
+
+    // Add rotation to the terrain
+    terrain.rotation.x = -Math.PI / 2; // Rotate the terrain to be horizontal
+
+    // Center the terrain
+    terrain.position.set(0, -10, 0); // Updated position
+
+    // Slider for noise strength
+    const noiseStrengthSlider = document.getElementById('noiseStrengthSlider');
+    noiseStrengthSlider.addEventListener('input', function () {
+        noiseStrength = parseFloat(noiseStrengthSlider.value);
+        updateTerrain();
+    });
+
+    // Add a yellow sphere (sun) in the sky
+    const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    scene.add(sun);
+
+    // Position the sun in the sky
+    sun.position.set(0, 20, -20); // Adjust the position to be in the sky
+
+    // Rotate the sun around the center
+    const sunRotationSpeed = 0.01;
+    function rotateSun() {
+        sun.rotation.y += sunRotationSpeed;
+    }
+
+    // Handle window resize
+    window.addEventListener('resize', function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        updateTerrain();
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        rotateSun(); // Rotate the sun
+        renderer.render(scene, camera);
+    }
+
+    animate();
+</script>
 </body>
+
 </html>
