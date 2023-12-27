@@ -11,5 +11,6 @@
     <orderEntry type="library" name="three" level="application" />
     <orderEntry type="library" name="perlin-noise" level="application" />
     <orderEntry type="library" name="noisejs" level="application" />
+    <orderEntry type="library" name="dat-gui" level="application" />
   </component>
 </module>
