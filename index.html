@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotating Sun around Mountain</title>
+    <title>Rotating Sun Illuminating Mountain</title>
     <style>
         body {
             margin: 0;
@@ -41,6 +41,7 @@
     const renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x87CEEB); // Light blue background color
+    renderer.shadowMap.enabled = true; // Enable shadows
     document.body.appendChild(renderer.domElement);
 
     // Generate terrain using Perlin noise
@@ -50,12 +51,15 @@
     // Initial color for the mountain
     let mountainColor = 0x8B4513;
 
-    const material = new THREE.MeshBasicMaterial({
-        color: mountainColor, // Use the variable for the mountain color
-        wireframe: true
+    const material = new THREE.MeshPhongMaterial({ // Use MeshPhongMaterial for lighting
+        color: mountainColor,
+        flatShading: true,
+        side: THREE.DoubleSide
     });
 
     const terrain = new THREE.Mesh(geometry, material);
+    terrain.castShadow = true; // Enable shadow casting for the terrain
+    terrain.receiveShadow = true; // Enable shadow receiving for the terrain
     scene.add(terrain);
 
     // Apply Perlin noise to the terrain
@@ -86,13 +90,21 @@
     // Position the camera
     camera.position.z = 30;
 
-    // Add lighting
+    // Add ambient light
     const ambientLight = new THREE.AmbientLight(0x404040);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(1, 1, 1).normalize();
+    // Add directional light (simulating the sun)
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0, 10, 10); // Adjust the position of the "sun"
+    directionalLight.castShadow = true; // Enable shadow casting for the light
     scene.add(directionalLight);
+
+    // Set up shadow properties
+    directionalLight.shadow.mapSize.width = 1024;
+    directionalLight.shadow.mapSize.height = 1024;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 50;
 
     // Add rotation to the terrain
     terrain.rotation.x = -Math.PI / 2; // Rotate the terrain to be horizontal
@@ -132,6 +144,9 @@
             sun.position.x = sunDistance * Math.cos(sun.rotation.y);
             sun.position.z = sunDistance * Math.sin(sun.rotation.y);
             sun.rotation.y += sunRotationSpeed;
+
+            // Update the directional light position based on the sun's position
+            directionalLight.position.copy(sun.position);
         }
     }
 
