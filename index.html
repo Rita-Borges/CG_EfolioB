@@ -36,6 +36,8 @@
 <label for="colorPicker"></label><input type="color" id="colorPicker" value="#8B4513">
 <script type="module">
     import * as THREE from 'https://unpkg.com/three@0.124.0/build/three.module.js';
+    import { OrbitControls } from 'https://unpkg.com/three@0.124.0/examples/jsm/controls/OrbitControls.js';
+    import * as dat from 'https://unpkg.com/dat.gui@0.7.7/build/dat.gui.module.js';
     import { ImprovedNoise } from "https://threejsfundamentals.org/threejs/resources/threejs/r127/examples/jsm/math/ImprovedNoise.js";
 
     // Set up scene
@@ -47,7 +49,12 @@
     renderer.shadowMap.enabled = true; // Enable shadows
     document.body.appendChild(renderer.domElement);
 
-
+    // Initialize OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // an animation loop is required when either damping or autorotation are enabled
+    controls.dampingFactor = 0.25;
+    controls.screenSpacePanning = false;
+    controls.maxPolarAngle = Math.PI / 2;
 
     // Generate terrain using Perlin noise
     const terrainSize = 60;
@@ -140,15 +147,17 @@
         renderer.render(scene, camera);
     });
 
-    // Add glow effect to the sun
+    // Add the sun
     const sunGeometry = new THREE.SphereGeometry(2.2, 32, 32);
     const sunTextureLoader = new THREE.TextureLoader();
     const sunTexture = sunTextureLoader.load('asset/sun.jpeg');
 
     const sunMaterial = new THREE.MeshStandardMaterial({
         map: sunTexture,
-        transparent: true,
+        transparent: false,
         opacity: 0.8,
+        emissive: 0xfae500,
+        emissiveIntensity: 0.8,
         side: THREE.DoubleSide,
     });
 
@@ -191,9 +200,127 @@
         }
     });
 
+    // Create clouds using a particle system with a texture
+    const cloudGeometry = new THREE.BufferGeometry();
+    const cloudMaterial = new THREE.PointsMaterial({
+        size: 5,
+        map: new THREE.TextureLoader().load('asset/cloud.png'), // Replace with the path to your cloud texture
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending, // Additive blending for a more realistic look
+        depthWrite: false // Ensure clouds are rendered behind other objects
+    });
+
+    const cloudVertices = [];
+    const cloudCount = 100;
+    const cloudSpread = terrainSize * 1.5; // Adjust the spread of clouds
+
+    const sunYPosition = sun.position.y; // Get the y position of the sun
+    const additionalCloudsAboveSun = 50; // Adjust the number of clouds above the sun
+
+    for (let i = 0; i < cloudCount + additionalCloudsAboveSun; i++) {
+        let x, y, z;
+
+        if (i < cloudCount) {
+            // Clouds below the sun
+            x = Math.random() * cloudSpread - cloudSpread / 4;
+            y = sunYPosition; // Use the y position of the sun
+            z = Math.random() * 10;
+        }
+
+        // Check if the cloud is within the mountain area
+        const distanceToMountain = terrainSize / 2 - Math.abs(x);
+        if (distanceToMountain < 100) { // Adjust the minimum distance from the mountain
+            cloudVertices.push(x, y, z);
+        }
+    }
+
+    cloudGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cloudVertices, 3));
+    const clouds = new THREE.Points(cloudGeometry, cloudMaterial);
+    scene.add(clouds);
+
+    // dat.GUI controls
+    const gui = new dat.GUI();
+    const transformTerrainFolder = gui.addFolder('Geometric Transformations (Terrain)');
+    const transformSunFolder = gui.addFolder('Geometric Transformations (Sun)');
+    const transformCloudsFolder = gui.addFolder('Geometric Transformations (Clouds)');
+    const transformParametersTerrain = {
+        translateX: 0,
+        translateY: 0,
+        rotate: 0,
+        scale: 1
+    };
+    const transformParametersSun = {
+        translateX: 0,
+        translateY: sunDistance,
+        rotate: 0,
+        scale: 1
+    };
+    const transformParametersClouds = {
+        translateX: 0,
+        translateY: 0,
+        rotate: 0,
+        scale: 1
+    };
+
+    const terrainTranslateXController = transformTerrainFolder.add(transformParametersTerrain, 'translateX', -50, 50);
+    const terrainTranslateYController = transformTerrainFolder.add(transformParametersTerrain, 'translateY', -50, 50);
+    const terrainRotateController = transformTerrainFolder.add(transformParametersTerrain, 'rotate', 0, Math.PI * 2);
+    const terrainScaleController = transformTerrainFolder.add(transformParametersTerrain, 'scale', 0.5, 2);
+
+    terrainTranslateXController.onChange(() => updateTransformTerrain());
+    terrainTranslateYController.onChange(() => updateTransformTerrain());
+    terrainRotateController.onChange(() => updateTransformTerrain());
+    terrainScaleController.onChange(() => updateTransformTerrain());
+
+
+    const sunTranslateXController = transformSunFolder.add(transformParametersSun, 'translateX', -50, 50);
+    const sunTranslateYController = transformSunFolder.add(transformParametersSun, 'translateY', sunDistance - 50, sunDistance + 50);
+    const sunRotateController = transformSunFolder.add(transformParametersSun, 'rotate', 0, Math.PI * 2);
+    const sunScaleController = transformSunFolder.add(transformParametersSun, 'scale', 0.5, 2);
+
+    sunTranslateXController.onChange(updateTransformSun);
+    sunTranslateYController.onChange(updateTransformSun);
+    sunRotateController.onChange(updateTransformSun);
+    sunScaleController.onChange(updateTransformSun);
+
+    const cloudsTranslateXController = transformCloudsFolder.add(transformParametersClouds, 'translateX', -50, 50);
+    const cloudsTranslateYController = transformCloudsFolder.add(transformParametersClouds, 'translateY', -50, 50);
+    const cloudsRotateController = transformCloudsFolder.add(transformParametersClouds, 'rotate', 0, Math.PI * 2);
+    const cloudsScaleController = transformCloudsFolder.add(transformParametersClouds, 'scale', 0.5, 2);
+
+    cloudsTranslateXController.onChange(updateTransformClouds);
+    cloudsTranslateYController.onChange(updateTransformClouds);
+    cloudsRotateController.onChange(updateTransformClouds);
+    cloudsScaleController.onChange(updateTransformClouds);
+
+    function updateTransformTerrain() {
+        terrain.position.x = transformParametersTerrain.translateX;
+        terrain.position.y = transformParametersTerrain.translateY;
+        terrain.rotation.z = transformParametersTerrain.rotate;
+        terrain.scale.set(transformParametersTerrain.scale, transformParametersTerrain.scale, transformParametersTerrain.scale);
+    }
+
+    function updateTransformSun() {
+        sun.position.x = transformParametersSun.translateX;
+        sun.position.y = transformParametersSun.translateY;
+        sun.rotation.z = transformParametersSun.rotate;
+        sun.scale.set(transformParametersSun.scale, transformParametersSun.scale, transformParametersSun.scale);
+    }
+
+    function updateTransformClouds() {
+        clouds.position.x = transformParametersClouds.translateX;
+        clouds.position.y = transformParametersClouds.translateY;
+        clouds.position.z = transformParametersClouds.translateZ; // Add this line for the cloud's Z translation
+        clouds.rotation.z = transformParametersClouds.rotate;
+        clouds.scale.set(transformParametersClouds.scale, transformParametersClouds.scale, transformParametersClouds.scale);
+    }
+
     function animate() {
         requestAnimationFrame(animate);
         rotateSun();
+        controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
+
         renderer.render(scene, camera);
     }
 
