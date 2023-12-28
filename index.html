@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rotating Sun Illuminating Mountain</title>
+    <title>Rotating Sun Casting Shadow on Mountain</title>
     <style>
         body {
             margin: 0;
@@ -12,15 +12,18 @@
             background-color: #87CEEB; /* Light blue background color */
         }
 
-        #noiseStrengthSlider {
+        #noiseStrengthSlider,
+        #colorPicker {
             position: absolute;
-            top: 10px;
-            left: 10px;
             width: 200px;
         }
 
+        #noiseStrengthSlider {
+            top: 10px;
+            left: 10px;
+        }
+
         #colorPicker {
-            position: absolute;
             top: 40px;
             left: 10px;
         }
@@ -44,6 +47,8 @@
     renderer.shadowMap.enabled = true; // Enable shadows
     document.body.appendChild(renderer.domElement);
 
+
+
     // Generate terrain using Perlin noise
     const terrainSize = 60;
     const geometry = new THREE.PlaneGeometry(terrainSize, terrainSize, 100, 100);
@@ -51,16 +56,23 @@
     // Initial color for the mountain
     let mountainColor = 0x8B4513;
 
-    const material = new THREE.MeshPhongMaterial({ // Use MeshPhongMaterial for lighting
+    const material = new THREE.MeshPhongMaterial({
         color: mountainColor,
         flatShading: true,
         side: THREE.DoubleSide
     });
+    material.shininess = 0; // Set shininess to 0 to make it look less glossy
 
     const terrain = new THREE.Mesh(geometry, material);
     terrain.castShadow = true; // Enable shadow casting for the terrain
     terrain.receiveShadow = true; // Enable shadow receiving for the terrain
     scene.add(terrain);
+
+    // Remove the existing material
+    terrain.material.dispose();
+
+    // Set the new material
+    terrain.material = material;
 
     // Apply Perlin noise to the terrain
     const perlin = new ImprovedNoise();
@@ -95,22 +107,23 @@
     scene.add(ambientLight);
 
     // Add directional light (simulating the sun)
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(0, 10, 10); // Adjust the position of the "sun"
-    directionalLight.castShadow = true; // Enable shadow casting for the light
-    scene.add(directionalLight);
+    const sunDistance = 12;
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+    sunLight.position.set(0, sunDistance, 0); // Adjust the position of the "sun"
+    sunLight.castShadow = false; // Enable shadow casting for the light
+    scene.add(sunLight);
 
-    // Set up shadow properties
-    directionalLight.shadow.mapSize.width = 1024;
-    directionalLight.shadow.mapSize.height = 1024;
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = 50;
+    // Set up shadow properties for the sunlight
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 100;
 
     // Add rotation to the terrain
     terrain.rotation.x = -Math.PI / 2; // Rotate the terrain to be horizontal
 
     // Center the terrain
-    terrain.position.set(0, -10, 0); // Updated position
+    terrain.position.set(0, -10, -10);
 
     // Slider for noise strength
     const noiseStrengthSlider = document.getElementById('noiseStrengthSlider');
@@ -127,26 +140,37 @@
         renderer.render(scene, camera);
     });
 
-    // Add a yellow sphere (sun) in the sky
-    const sunGeometry = new THREE.SphereGeometry(2, 32, 32);
-    const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    // Add glow effect to the sun
+    const sunGeometry = new THREE.SphereGeometry(2.2, 32, 32);
+    const sunTextureLoader = new THREE.TextureLoader();
+    const sunTexture = sunTextureLoader.load('asset/sun.jpeg');
+
+    const sunMaterial = new THREE.MeshStandardMaterial({
+        map: sunTexture,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide,
+    });
+
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     scene.add(sun);
 
     // Move the sun away from the center
-    const sunDistance = 20;
     sun.position.set(0, sunDistance, 0); // Adjust the position to be in the sky
 
     // Rotate the sun around the center
-    const sunRotationSpeed = 0.01;
+    const clock = new THREE.Clock();
+    const sunRotationSpeed = 0.8;
+
     function rotateSun() {
         if (!isPaused) {
+            const delta = clock.getDelta();
+            sun.rotation.y += sunRotationSpeed * delta;
             sun.position.x = sunDistance * Math.cos(sun.rotation.y);
             sun.position.z = sunDistance * Math.sin(sun.rotation.y);
-            sun.rotation.y += sunRotationSpeed;
 
-            // Update the directional light position based on the sun's position
-            directionalLight.position.copy(sun.position);
+            // Update the sunlight position based on the sun's position
+            sunLight.position.copy(sun.position);
         }
     }
 
@@ -169,7 +193,7 @@
 
     function animate() {
         requestAnimationFrame(animate);
-        rotateSun(); // Rotate the sun
+        rotateSun();
         renderer.render(scene, camera);
     }
 
