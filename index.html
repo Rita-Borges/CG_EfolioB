@@ -262,16 +262,19 @@
         rotate: 0,
         scale: 1
     };
+    //wind
+    const physicsFolder = gui.addFolder('Physics');
+    const windSpeedController = physicsFolder.add({ windSpeed: 0.02 }, 'windSpeed', 0, 0.1).name('Wind Speed');
 
     const terrainTranslateXController = transformTerrainFolder.add(transformParametersTerrain, 'translateX', -50, 50);
     const terrainTranslateYController = transformTerrainFolder.add(transformParametersTerrain, 'translateY', -50, 50);
     const terrainRotateController = transformTerrainFolder.add(transformParametersTerrain, 'rotate', 0, Math.PI * 2);
     const terrainScaleController = transformTerrainFolder.add(transformParametersTerrain, 'scale', 0.5, 2);
 
-    terrainTranslateXController.onChange(() => updateTransformTerrain());
-    terrainTranslateYController.onChange(() => updateTransformTerrain());
-    terrainRotateController.onChange(() => updateTransformTerrain());
-    terrainScaleController.onChange(() => updateTransformTerrain());
+    terrainTranslateXController.onChange(updateTransformTerrain);
+    terrainTranslateYController.onChange(updateTransformTerrain);
+    terrainRotateController.onChange(updateTransformTerrain);
+    terrainScaleController.onChange(updateTransformTerrain);
 
 
     const sunTranslateXController = transformSunFolder.add(transformParametersSun, 'translateX', -50, 50);
@@ -315,12 +318,27 @@
         clouds.rotation.z = transformParametersClouds.rotate;
         clouds.scale.set(transformParametersClouds.scale, transformParametersClouds.scale, transformParametersClouds.scale);
     }
+    function animateClouds() {
+        clouds.position.x += windSpeedController.getValue(); // Adjust the clouds' X position based on wind speed
 
+        // Reset clouds' X position when they go beyond a certain limit
+        if (clouds.position.x > terrainSize / 2) {
+            clouds.position.x = -terrainSize / 2;
+        }
+
+        // Update the cloud geometry to reflect the new position
+        const positions = cloudGeometry.getAttribute('position');
+        for (let i = 0; i < positions.array.length; i += 3) {
+            positions.array[i] += windSpeedController.getValue();
+        }
+
+        positions.needsUpdate = true; // Ensure the changes are reflected in the geometry
+    }
     function animate() {
         requestAnimationFrame(animate);
         rotateSun();
         controls.update(); // only required if controls.enableDamping = true, or if controls.autoRotate = true
-
+        animateClouds(); // Call the function to animate the clouds
         renderer.render(scene, camera);
     }
 
