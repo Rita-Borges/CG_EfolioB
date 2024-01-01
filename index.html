@@ -5,29 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rotating Sun Casting Shadow on Mountain</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #87CEEB; /* Light blue background color */
-        }
-
-        #noiseStrengthSlider,
-        #colorPicker {
-            position: absolute;
-            width: 200px;
-        }
-
-        #noiseStrengthSlider {
-            top: 10px;
-            left: 10px;
-        }
-
-        #colorPicker {
-            top: 40px;
-            left: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="styling.css">
 </head>
 
 <body>
@@ -198,7 +176,6 @@
         }
     });
 
-
     function resetTerrain() {
         geometry.vertices = originalTerrainVertices.map(v => v.clone());
         updateTerrain();
@@ -225,26 +202,13 @@
 
     const cloudVertices = [];
     const cloudCount = 100;
-    const cloudSpread = terrainSize * 1.5; // Adjust the spread of clouds
 
-    const sunYPosition = sun.position.y; // Get the y position of the sun
-    const additionalCloudsAboveSun = 50; // Adjust the number of clouds above the sun
+    for (let i = 0; i < cloudCount; i++) {
+        const x = Math.random() * terrainSize - terrainSize / 2;
+        const y = Math.random() * 10; // Adjust the height of clouds above the terrain
+        const z = Math.random() * terrainSize - terrainSize / 2;
 
-    for (let i = 0; i < cloudCount + additionalCloudsAboveSun; i++) {
-        let x, y, z;
-
-        if (i < cloudCount) {
-            // Clouds below the sun
-            x = Math.random() * cloudSpread - cloudSpread / 4;
-            y = sunYPosition; // Use the y position of the sun
-            z = Math.random() * 10;
-        }
-
-        // Check if the cloud is within the mountain area
-        const distanceToMountain = terrainSize / 2 - Math.abs(x);
-        if (distanceToMountain < 100) { // Adjust the minimum distance from the mountain
-            cloudVertices.push(x, y, z);
-        }
+        cloudVertices.push(x, y, z);
     }
 
     cloudGeometry.setAttribute('position', new THREE.Float32BufferAttribute(cloudVertices, 3));
