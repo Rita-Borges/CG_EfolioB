@@ -1,28 +1,13 @@
 // main.js
 import * as THREE from 'https://unpkg.com/three@0.124.0/build/three.module.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.124.0/examples/jsm/controls/OrbitControls.js';
 import * as dat from 'https://unpkg.com/dat.gui@0.7.7/build/dat.gui.module.js';
 import { createSun, rotateSun } from './SkySphere.mjs';
 import { createClouds, animateClouds } from './addOns.mjs';
 import { initializeTerrain } from './terrainCustomization.mjs';
-import { setupUIControls } from './uiControls.mjs';  // Import the new module
+import { initRenderer } from './rendering.mjs';
 
 
-// Set up scene
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-const renderer = new THREE.WebGLRenderer();
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x87CEEB); // Light blue background color
-renderer.shadowMap.enabled = true; // Enable shadows
-document.body.appendChild(renderer.domElement);
-
-// Initialize OrbitControls
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.25;
-controls.screenSpacePanning = false;
-controls.maxPolarAngle = Math.PI / 2;
+const { scene, camera, renderer, controls } = initRenderer();
 
 const terrainSize = 60;
 let noiseStrength = 5; // Initial value for noise strength
@@ -74,6 +59,7 @@ const clock = new THREE.Clock();
 const sunRotationSpeed = 0.8;
 
 // Handle window resize
+
 window.addEventListener('resize', function () {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
